@@ -17,13 +17,19 @@ import copy
 
 parser = argparse.ArgumentParser()
 
+parser.add_argument("--data_dir", default="./flowers", action='store', help='Specify the image data directory')
 parser.add_argument("--save_dir", default = "./save_checkpoint.pth", action="store")
 parser.add_argument("--learning_rate", default=0.01, type=float)
 parser.add_argument("--arch", default="vgg16", type = str)
 parser.add_argument("--epochs", default=20, type=int)
 parser.add_argument("--gpu", default=False, action="store_true")
-
+parser.add_argument('--hidden_layers', type=int, default=512, help='Specify the hidden units of your model')
 results = parser.parse_args()
+
+data_dir = "flowers"
+train_dir = data_dir + '/train'
+valid_dir = data_dir + '/valid'
+test_dir = data_dir + '/test'
 
 data_transforms = { 
     'train': transforms.Compose([
@@ -45,15 +51,21 @@ data_transforms = {
         transforms.CenterCrop(size=224),
         transforms.ToTensor(),
         transforms.Normalize([0.485,0.456,0.406],
-                             [0.229,0.224,0.225])])}
+                             [0.229,0.224,0.225])
+    ])
+}
+
 image_datasets = {
     'train': datasets.ImageFolder(train_dir, transform=data_transforms['train']),
     'valid': datasets.ImageFolder(valid_dir, transform=data_transforms['valid']),
-    'test': datasets.ImageFolder(test_dir, transform=data_transforms['test'])}
+    'test': datasets.ImageFolder(test_dir, transform=data_transforms['test'])
+}
+
 dataloaders = {
     'train': torch.utils.data.DataLoader(image_datasets['train'], batch_size=64, shuffle=True),
     'valid': torch.utils.data.DataLoader(image_datasets['valid'], batch_size=64, shuffle=True),
-    'test': torch.utils.data.DataLoader(image_datasets['test'], batch_size=64, shuffle=True)}
+    'test': torch.utils.data.DataLoader(image_datasets['test'], batch_size=64, shuffle=True)
+}
 
 epochs = 3
 print_every = 5
@@ -69,15 +81,9 @@ for epoch in range(epochs):
         inputs, labels = Variable(images), Variable(labels)
         optimizer.zero_grad()
 
-save_checkpoint = {"class_to_idx" : model.class_to_idx,
-                   "means" : [0.485, 0.456, 0.406],
-                   "stdev" : [0.229, 0.224, 0.225],
-                   "state_dic" : model.state_dict,
-                   "optimizer_state_dic" : optimizer.state_dict()
-}
-        
         if cuda:
             inputs, labels = inputs.cuda(), labels.cuda()
+        
         output = model.forward(inputs)
         loss = criterion(output, labels)
         loss.backward()
@@ -115,3 +121,17 @@ save_checkpoint = {"class_to_idx" : model.class_to_idx,
             
             training_loss = 0
             model.train()
+model.class_to_idx = image_datasets['train'].class_to_idx
+save_checkpoint = {"class_to_idx" : model.class_to_idx,
+                   "criterion": nn.NLLLoss(),
+                   "model": model,
+                   "arch": "vgg16",
+                   "classifier": classifier,
+                   "means" : [0.485, 0.456, 0.406],
+                   "stdev" : [0.229, 0.224, 0.225],
+                   "state_dic" : model.state_dict,
+                   "optimizer_state_dic" : optimizer.state_dict(),
+                   "epochs" : 3
+}
+torch.save(save_checkpoint, 'save_checkpoint.pth')
+print(model.state_dict().keys())

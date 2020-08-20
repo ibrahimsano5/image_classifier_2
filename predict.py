@@ -13,26 +13,23 @@ parser.add_argument("save_checkpoint", action="store", type = str)
 parser.add_argument("--category_names", default="cat_to_name.json", action="store")
 parser.add_argument("--gpu", default=False, action="store_true")
 parser.add_argument("--top_k", default=5, type=int)
-return parser.parse_args()
+results = parser.parse_args()
 
 def load_checkpoint(path="save_checkpoint.pth"):
+    checkpoint = torch.load(filepath)
     
-    load_checkpoint = torch.load("save_checkpoint.pth")
-    model = models.vgg16(pretrained=True)
-    for param in model.parameters():
-        param.requires_grad=False
+    model = checkpoint['model']
     
-    model.class_to_idx = load_checkpoint["class_to_idx"]
-    classifier = nn.Sequential(OrderedDict([
-        ('fc1', nn.Linear(25088, 512)),
-        ('ReLu1', nn.ReLU()),
-        ('Dropout1', nn.Dropout(0.05)),
-        ('fc3', nn.Linear(512, 102)),
-        ('output', nn.LogSoftmax(dim=1))]))
+    model.class_to_idx = checkpoint["class_to_idx"]
     model.classifier = classifier
-    model.class_to_idx = load_checkpoint["class_to_idx"]
-    model.load_state_dict(load_checkpoint["state_dic"])
+    model.epochs = checkpoint['epochs']
+    model.criterion = checkpoint['criterion']
+    model.load_state_dict(checkpoint["state_dic"])
     optimizer.load_state_dict(checkpoint['optimizer_state_dic'])
+    
+    return model
+    
+    
     
     return model
 
