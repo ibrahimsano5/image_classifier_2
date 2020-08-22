@@ -15,8 +15,8 @@ import copy
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--data_dir", default="./flowers", action="store")
-parser.add_argument("--save_dir", default="./checkpoint.pth", action="store")
+parser.add_argument("data_dir", default="./flowers", action="store")
+parser.add_argument("--save_dir", default=".", action="store")
 parser.add_argument("--learning_rate", default=0.01, type=float, action="store")
 parser.add_argument("--arch", default="vgg16", type = str, action="store")
 parser.add_argument("--epochs", default=3, type=int, action="store")
@@ -29,19 +29,13 @@ gpu = results.gpu
 hidden_layers = results.hidden_layers
 learning_rate = results.learning_rate
 epochs = results.epochs
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-if gpu and device == "cuda":
-    power = "gpu"
-elif not gpu and device == "cuda":
-    print("GPU selected but unavailable")
-elif not gpu and device != 'cuda':
-    power = "cpu"
+device = torch.device('cuda' if gpu and torch.cuda.is_available() else 'cpu')
 
 data_dir = results.data_dir
 train_dir = data_dir + '/train'
 valid_dir = data_dir + '/valid'
 test_dir = data_dir + '/test'
-print(power)
+
 data_transforms = { 
     'train': transforms.Compose([
         transforms.RandomResizedCrop(size=224),
@@ -80,17 +74,21 @@ print(dataloaders['train'])
 print(dataloaders['valid'])
 print(dataloaders['test'])
 
+model = model.to(device)
 if results.arch == 'vgg16':
+    in_features = 25088
     model = models.vgg16(pretrained=True)
     print("Architecture Model VGG16")
     for param in model.parameters():
         param.requires_grad = False
 elif results.arch == 'alexnet':
+    in_features = 9216
     model = models.alexnet(pretrained=True)
     print("Architecture Model Alexnet")
     for param in model.parameters():
         param.requires_grad = False
 elif results.arch == 'densenet121':
+    in_features = 1024
     model = models.densenet121(pretrained=True)
     print("Architecture Model Densenet 121")
     for param in model.parameters():
@@ -104,20 +102,17 @@ print(model)
 for param in model.parameters():
     param.requires_grad = False
 classifier = nn.Sequential(OrderedDict([
-        ('fc1', nn.Linear(25088, 512)),
+        ('fc1', nn.Linear(in_features, 512)),
         ('ReLu1', nn.ReLU()),
         ('Dropout1', nn.Dropout(0.05)),
-        ('fc3', nn.Linear(512, 102)),
+        ('fc3', nn.Linear(hidden_layers, 102)),
         ('output', nn.LogSoftmax(dim=1))]))
 
 model.classifier = classifier
 
 criterion = nn.NLLLoss()
 optimizer = optim.Adam(model.classifier.parameters(), lr=learning_rate)
-
-cuda = torch.cuda.is_available()
     
-epochs = 3
 print_every = 5
 steps = 0
 #Tqdm was recommended since the traditional loading method do take time. But precision on the previous review were missing, so we'll
@@ -132,8 +127,7 @@ for epoch in range(epochs):
         inputs, labels = Variable(images), Variable(labels)
         optimizer.zero_grad()
         
-        if cuda:
-            inputs, labels = inputs.cuda(), labels.cuda()
+        inputs, labels = inputs.to(device), labels.to(device)
         output = model.forward(inputs)
         loss = criterion(output, labels)
         loss.backward()
@@ -151,13 +145,9 @@ for epoch in range(epochs):
                     inputs = Variable(images)
                     labels = Variable(labels)
 
-                    if cuda:
-                        inputs, labels = inputs.cuda(), labels.cuda()
-
+                    inputs, labels = inputs.to(device), labels.to(device)
                     output = model.forward(inputs)
-
                     validation_loss += criterion(output, labels).item()
-
                     ps = torch.exp(output).data
                     equality = (labels.data == ps.max(1)[1])
 
@@ -183,5 +173,5 @@ checkpoint = {"class_to_idx" : model.class_to_idx,
                    "optimizer_state_dic" : optimizer.state_dict(),
                    "epochs" : 3
 }
-torch.save(checkpoint, 'checkpoint.pth')
+torch.save(checkpoint, save_dir)
 print("Model has been trained and saved.")
