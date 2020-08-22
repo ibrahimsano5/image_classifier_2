@@ -11,7 +11,6 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 import numpy as np
 import matplotlib.pyplot as plt
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 import copy
 import argparse
 
@@ -31,12 +30,18 @@ hidden_layers = results.hidden_layers
 learning_rate = results.learning_rate
 epochs = results.epochs
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+if gpu and device == "cuda":
+    power = "gpu"
+elif not gpu and device == "cuda":
+    print("GPU selected but unavailable")
+elif not gpu and device != 'cuda':
+    power = "cpu"
 
 data_dir = results.data_dir
 train_dir = data_dir + '/train'
 valid_dir = data_dir + '/valid'
 test_dir = data_dir + '/test'
-
+print(power)
 data_transforms = { 
     'train': transforms.Compose([
         transforms.RandomResizedCrop(size=224),
@@ -67,8 +72,8 @@ image_datasets = {
 }
 dataloaders = {
     'train': torch.utils.data.DataLoader(image_datasets['train'], batch_size=64, shuffle=True),
-    'valid': torch.utils.data.DataLoader(image_datasets['valid'], batch_size=64, shuffle=True),
-    'test': torch.utils.data.DataLoader(image_datasets['test'], batch_size=64, shuffle=True)
+    'valid': torch.utils.data.DataLoader(image_datasets['valid'], batch_size=64),
+    'test': torch.utils.data.DataLoader(image_datasets['test'], batch_size=64)
 }
 
 print(dataloaders['train'])
@@ -108,7 +113,7 @@ classifier = nn.Sequential(OrderedDict([
 model.classifier = classifier
 
 criterion = nn.NLLLoss()
-optimizer = optim.Adam(model.classifier.parameters(), lr=0.001)
+optimizer = optim.Adam(model.classifier.parameters(), lr=learning_rate)
 
 cuda = torch.cuda.is_available()
     

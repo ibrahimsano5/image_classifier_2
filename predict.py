@@ -9,11 +9,17 @@ import PIL
 from PIL import Image
 import torch.nn.functional as F
 from torch.autograd import Variable
+import copy
+import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-import copy
-import argparse
+if gpu and device == "cuda":
+    power = "gpu"
+elif not gpu and device == "cuda":
+    print("GPU selected but unavailable")
+elif not gpu and device not "cuda":
+    power = "cpu"
 
 image_path = "flowers/test/33/image_06486.jpg"
 checkpoint = 'checkpoint.pth'
@@ -124,7 +130,7 @@ print(cat_to_name)
 
 
 def load_checkpoint(path="checkpoint.pth"):
-    checkpoint = torch.load(filepath)
+    checkpoint = torch.load(path)
     
     model = checkpoint['model']
     model.class_to_idx = checkpoint["class_to_idx"]
@@ -160,7 +166,7 @@ def predict(image_path, model, topk=5):
     
     ps = torch.exp(log_probs)
     top_k, classes_index = ps.topk(topk, dim=1)
-    top_k, classes_index = np.array(top_k.to('cpu')[0]), np.array(classes_index.to('cpu')[0])
+    top_k, classes_index = np.array(top_k.to(power)[0]), np.array(classes_index.to(power)[0])
     idx_to_class = {x: y for y, x in model.class_to_idx.items()}
     
     classes = []
