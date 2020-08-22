@@ -14,24 +14,49 @@ import matplotlib.pyplot as plt
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 import copy
 import argparse
-import utility
+
+image_path = "flowers/test/33/image_06486.jpg"
+checkpoint = 'checkpoint.pth'
+filepath = 'cat_to_name.json' 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--image", default="image_path", type=str)
-parser.add_argument("--checkpoint", default="save_checkpoint.pth",type=str)
+parser.add_argument("--image_path", default="image_path", type=str)
+parser.add_argument("--checkpoint", default="checkpoint.pth",type=str)
 parser.add_argument("--top_k", default=5, type=int)
-parser.add_argument("--category_names", default='cat_to_name.json', action="store")
+parser.add_argument("--filepath", default='cat_to_name.json', action="store")
 parser.add_argument("--gpu", default=False, action="store_true")
 results = parser.parse_args()
 
-#All saved data were included in utility.py and in checkpoint, but there's a problem when calling previous functions by importing datas, so
-#I copied and pasted them back here, but the program without these is the right one. Copied data (copied from train.py) start from "#copied"
-#to "#pasted"
+image_path= results.image_path
+checkpoint= results.checkpoint
+top_k= results.top_k
+filepath= results.filepath
+
+
+#Just because the training and validation do take time, we made it easier for you to get the results. 
+#Delete the triple coma if you feel like you don't have time to lose or anything...
 
 
 #Copied --->
 
-data_dir = 'flowers'
+'''parser = argparse.ArgumentParser()
+parser.add_argument("--data_dir", default="./flowers", action="store")
+parser.add_argument("--save_dir", default="./checkpoint.pth", action="store")
+parser.add_argument("--learning_rate", default=0.01, type=float, action="store")
+parser.add_argument("--arch", default="vgg16", type = str, action="store")
+parser.add_argument("--epochs", default=3, type=int, action="store")
+parser.add_argument("--gpu", default=False, action="store_true")
+parser.add_argument("--hidden_layers", default=512, type=int, action="store")
+results = parser.parse_args()
+
+arch = results.arch
+gpu = results.gpu
+hidden_layers = results.hidden_layers
+learning_rate = results.learning_rate
+epochs = results.epochs
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+data_dir = results.data_dir
 train_dir = data_dir + '/train'
 valid_dir = data_dir + '/valid'
 test_dir = data_dir + '/test'
@@ -70,8 +95,17 @@ dataloaders = {
     'test': torch.utils.data.DataLoader(image_datasets['test'], batch_size=64, shuffle=True)
 }
 
+print(dataloaders['train'])
+print(dataloaders['valid'])
+print(dataloaders['test'])
+
+if results.arch == 'vgg16':
+    model = models.vgg16(pretrained=True)
+    print("Architecture Model VGG16")
+elif results.arch == 'alexnet':
+    model = models.alexnet(pretrained=True)
 model = models.vgg16(pretrained=True)
-model
+print(model)
 for param in model.parameters():
     param.requires_grad = False
 classifier = nn.Sequential(OrderedDict([
@@ -80,17 +114,19 @@ classifier = nn.Sequential(OrderedDict([
         ('Dropout1', nn.Dropout(0.05)),
         ('fc3', nn.Linear(512, 102)),
         ('output', nn.LogSoftmax(dim=1))]))
-print('Utility imported')
+print('Checkpoint alternative loaded sucessfully')
+model.class_to_idx = image_datasets['train'].class_to_idx'''
 #<--- Pasted
+import json
+with open(filepath, 'r') as f:
+    cat_to_name = json.load(f)
+print(cat_to_name)
 
-model.classifier = classifier
-model.class_to_idx = image_datasets['train'].class_to_idx
 
-def load_checkpoint(path="save_checkpoint.pth"):
-    checkpoint = torch.save(save_checkpoint, path)
+def load_checkpoint(path="checkpoint.pth"):
+    checkpoint = torch.load(filepath)
     
     model = checkpoint['model']
-    
     model.class_to_idx = checkpoint["class_to_idx"]
     model.classifier = classifier
     model.epochs = checkpoint['epochs']
@@ -107,9 +143,7 @@ def process_image(image):
     process_image = transforms.Compose([ transforms.Resize(255), transforms.CenterCrop(224), 
                                          transforms.ToTensor(), 
                                          transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
-    
     picture = process_image(Image.open(image))
-    
     return picture
 
 def predict(image_path, model, topk=5):
@@ -135,8 +169,7 @@ def predict(image_path, model, topk=5):
     
     return list(top_k), list(classes)
 
-image_path = "flowers/test/33/image_06486.jpg"
-probs, classes = predict(image_path, model)
+probs, classes = predict("flowers/test/33/image_06486.jpg", model)
 print(probs)
 print(classes)
-print("Prediction made, end of Part 2.")
+print("Prediction made, end of Part 2.") #Good luck in life.

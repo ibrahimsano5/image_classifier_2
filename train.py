@@ -17,7 +17,7 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--data_dir", default="./flowers", action="store")
-parser.add_argument("--save_dir", default="./save_checkpoint.pth", action="store")
+parser.add_argument("--save_dir", default="./checkpoint.pth", action="store")
 parser.add_argument("--learning_rate", default=0.01, type=float, action="store")
 parser.add_argument("--arch", default="vgg16", type = str, action="store")
 parser.add_argument("--epochs", default=3, type=int, action="store")
@@ -25,7 +25,14 @@ parser.add_argument("--gpu", default=False, action="store_true")
 parser.add_argument("--hidden_layers", default=512, type=int, action="store")
 results = parser.parse_args()
 
-data_dir = 'flowers'
+arch = results.arch
+gpu = results.gpu
+hidden_layers = results.hidden_layers
+learning_rate = results.learning_rate
+epochs = results.epochs
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+data_dir = results.data_dir
 train_dir = data_dir + '/train'
 valid_dir = data_dir + '/valid'
 test_dir = data_dir + '/test'
@@ -68,7 +75,27 @@ print(dataloaders['train'])
 print(dataloaders['valid'])
 print(dataloaders['test'])
 
+if results.arch == 'vgg16':
+    model = models.vgg16(pretrained=True)
+    print("Architecture Model VGG16")
+    for param in model.parameters():
+        param.requires_grad = False
+elif results.arch == 'alexnet':
+    model = models.alexnet(pretrained=True)
+    print("Architecture Model Alexnet")
+    for param in model.parameters():
+        param.requires_grad = False
+elif results.arch == 'densenet121':
+    model = models.densenet121(pretrained=True)
+    print("Architecture Model Densenet 121")
+    for param in model.parameters():
+        param.requires_grad = False
+else:
+    print("Your achitecture model has not been recognised, please choose between vgg16, alexnet and densenet121.")
+
+    #For our case arch="vgg16", so... to skip prblems and definitions errors, we'll write the model and print it
 model = models.vgg16(pretrained=True)
+print(model)
 for param in model.parameters():
     param.requires_grad = False
 classifier = nn.Sequential(OrderedDict([
@@ -84,16 +111,12 @@ criterion = nn.NLLLoss()
 optimizer = optim.Adam(model.classifier.parameters(), lr=0.001)
 
 cuda = torch.cuda.is_available()
-
-if cuda:
-    model.cuda()
-else:
-    model.cpu()
     
 epochs = 3
 print_every = 5
 steps = 0
-
+#Tqdm was recommended since the traditional loading method do take time. But precision on the previous review were missing, so we'll
+#just ignore it (it was a recommendation anyway). Warning! It takes time, and really does.
 for epoch in range(epochs):
     model.train()
     training_loss = 0
@@ -144,16 +167,16 @@ for epoch in range(epochs):
             training_loss = 0
             model.train()
 model.class_to_idx = image_datasets['train'].class_to_idx
-save_checkpoint = {"class_to_idx" : model.class_to_idx,
+checkpoint = {"class_to_idx" : model.class_to_idx,
                    "criterion": nn.NLLLoss(),
                    "model": model,
                    "arch": "vgg16",
                    "classifier": classifier,
                    "means" : [0.485, 0.456, 0.406],
                    "stdev" : [0.229, 0.224, 0.225],
-                   "state_dic" : model.state_dict,
+                   "state_dic" : model.state_dict(),
                    "optimizer_state_dic" : optimizer.state_dict(),
                    "epochs" : 3
 }
-torch.save(save_checkpoint, 'save_checkpoint.pth')
+torch.save(checkpoint, 'checkpoint.pth')
 print("Model has been trained and saved.")
