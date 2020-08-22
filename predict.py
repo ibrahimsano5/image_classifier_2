@@ -141,7 +141,7 @@ def load_checkpoint(path="checkpoint.pth"):
     optimizer.load_state_dict(checkpoint['optimizer_state_dic'])
     
     return model
-
+    print(model)
 def process_image(image):
     ''' Scales, crops, and normalizes a PIL image for a PyTorch model,
         returns an Numpy array
